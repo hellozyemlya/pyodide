@@ -37,5 +37,7 @@ Module.oldJspiSupported = oldJspiSupported;
 Module.jspiSupported = jspiSupported;
 
 if (jspiSupported) {
-  Module.preRun.push(initSuspenders);
+  // Use addOnPreMain instead of preRun because wasm exports need to be
+  // available for initSuspenders to wrap them with promising.
+  addOnPreMain(initSuspenders);
 }

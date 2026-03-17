@@ -51,8 +51,9 @@ PyObject*
 PyInit__pyodide_core(void);
 
 /**
- * Set up WasmFS with an OPFS backend mounted at /opfs for persistent storage.
- * Falls back silently if OPFS is not available (e.g., in Node.js or shell).
+ * Set up WasmFS. OPFS requires JSPI and can only be safely created from a
+ * worker thread, so it is not mounted here. It can be added later from a
+ * dedicated worker if persistent storage is needed.
  */
 EMSCRIPTEN_KEEPALIVE void
 setup_wasmfs(void)

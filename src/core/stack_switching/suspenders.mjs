@@ -24,11 +24,21 @@ export function promisingRunMain(...args) {
 /**
  * This creates a wrapper around wasm_func that receives an extra suspender
  * argument and returns a promise. The suspender is stored into suspenderGlobal
- * so it can be used by syncify
+ * so it can be used by syncify.
+ *
+ * When Emscripten's -sJSPI is active, exports are already wrapped with
+ * WebAssembly.promising by Asyncify.instrumentWasmExports, so we just
+ * wrap them to set the validSuspender flag.
  */
 export function createPromising(wasm_func) {
+  // Check if Emscripten's JSPI already wrapped this export.
+  // When -sJSPI is active, wasmExports are JS closures (not raw wasm funcs)
+  // that already call the promising version internally.
   if (Module.newJspiSupported) {
-    const promisingFunc = WebAssembly.promising(wasm_func);
+    // When Emscripten's -sJSPI is active, exports are JS closures wrapping
+    // the promising version. The promising function is stored as .orig.
+    // Use it directly instead of double-wrapping with WebAssembly.promising.
+    const promisingFunc = wasm_func.orig || WebAssembly.promising(wasm_func);
     async function wrapper(...args) {
       const orig = validSuspender.value;
       validSuspender.value = true;

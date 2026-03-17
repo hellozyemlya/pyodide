@@ -137,6 +137,7 @@ export CFLAGS_BASE=\
 	-fwasm-exceptions \
 	-sSUPPORT_LONGJMP=wasm \
 	-sWASMFS \
+	-sJSPI \
 	$(EXTRA_CFLAGS)
 
 
@@ -149,6 +150,7 @@ export LDFLAGS_BASE=\
 	-fwasm-exceptions \
 	-sSUPPORT_LONGJMP=wasm \
 	-sWASMFS \
+	-sJSPI \
 	-sASSERTIONS \
 	-sEMIT_PRODUCERS_SECTION \
 	-sMINIFY_HTML=0 \
@@ -168,6 +170,8 @@ export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-s USE_BZIP2 \
 	-s FORCE_FILESYSTEM=1 \
 	-sWASMFS \
+	-sJSPI \
+	-sJSPI_EXPORTS='main,_pyproxy_apply_promising,run_main_promising' \
 	-s INITIAL_MEMORY=20971520 \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-s MAXIMUM_MEMORY=4GB \
@@ -287,6 +291,7 @@ ifeq ($(DISABLE_DYLINK), 1)
 		-s USE_BZIP2 \
 		-s FORCE_FILESYSTEM=1 \
 		-sWASMFS \
+		-sJSPI \
 		-s INITIAL_MEMORY=20971520 \
 		-s ALLOW_MEMORY_GROWTH=1 \
 		-s MAXIMUM_MEMORY=4GB \

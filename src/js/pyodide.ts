@@ -394,7 +394,7 @@ async function instantiatePyodideModule(
   for (const func of fsInitFuncs) {
     await func(module);
   }
-  module._main();
+  await module._main();
 
   return module;
 }
