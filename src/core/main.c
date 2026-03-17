@@ -1,7 +1,9 @@
+#include <stdatomic.h>
 #define PY_SSIZE_T_CLEAN
 #include "Python.h"
 #include <emscripten.h>
 #include <emscripten/eventloop.h>
+#include <emscripten/wasmfs.h>
 #include <jslib.h>
 #include <stdbool.h>
 
@@ -49,6 +51,24 @@ PyObject*
 PyInit__pyodide_core(void);
 
 /**
+ * Set up WasmFS with an OPFS backend mounted at /opfs for persistent storage.
+ * Falls back silently if OPFS is not available (e.g., in Node.js or shell).
+ */
+EMSCRIPTEN_KEEPALIVE void
+setup_wasmfs(void)
+{
+  // WasmFS already creates a memory-backed root with /dev during its init.
+  // Only add additional mount points here.
+  backend_t opfs_backend = wasmfs_create_opfs_backend();
+  if (opfs_backend) {
+    int ret = wasmfs_create_directory("/opfs", 0777, opfs_backend);
+    if (ret != 0) {
+      fprintf(stderr, "Warning: failed to mount OPFS backend at /opfs\n");
+    }
+  }
+}
+
+/**
  * Bootstrap steps here:
  *  1. Import _pyodide package (we depend on this in _pyodide_core)
  *  2. Initialize the different ffi components and create the _pyodide_core
@@ -61,6 +81,7 @@ PyInit__pyodide_core(void);
 int
 main(int argc, char** argv)
 {
+  setup_wasmfs();
   // This exits and prints a message to stderr on failure,
   // no status code to check.
   PyImport_AppendInittab("_pyodide_core", PyInit__pyodide_core);

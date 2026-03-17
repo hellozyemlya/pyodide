@@ -218,9 +218,9 @@ function refreshStreams() {
   if (!INITIALIZED) {
     return;
   }
-  FS.closeStream(0 /* stdin */);
-  FS.closeStream(1 /* stdout */);
-  FS.closeStream(2 /* stderr */);
+  FS.close({ fd: 0 } as any /* stdin */);
+  FS.close({ fd: 1 } as any /* stdout */);
+  FS.close({ fd: 2 } as any /* stderr */);
   FS.open("/dev/stdin", cDefs.O_RDONLY);
   FS.open("/dev/stdout", cDefs.O_WRONLY);
   FS.open("/dev/stderr", cDefs.O_WRONLY);
@@ -241,29 +241,11 @@ API.initializeStreams = function (
   stdout?: (a: string) => void,
   stderr?: (a: string) => void,
 ) {
-  const major = FS.createDevice.major++;
-  DEVS.stdin = FS.makedev(major, 0);
-  DEVS.stdout = FS.makedev(major, 1);
-  DEVS.stderr = FS.makedev(major, 2);
-
-  FS.registerDevice(DEVS.stdin, stream_ops);
-  FS.registerDevice(DEVS.stdout, stream_ops);
-  FS.registerDevice(DEVS.stderr, stream_ops);
-
-  FS.unlink("/dev/stdin");
-  FS.unlink("/dev/stdout");
-  FS.unlink("/dev/stderr");
-
-  FS.mkdev("/dev/stdin", DEVS.stdin);
-  FS.mkdev("/dev/stdout", DEVS.stdout);
-  FS.mkdev("/dev/stderr", DEVS.stderr);
-
   setStdin({ stdin });
   setStdout({ batched: stdout });
   setStderr({ batched: stderr });
 
   INITIALIZED = true;
-  refreshStreams();
 };
 
 /**

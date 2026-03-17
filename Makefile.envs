@@ -136,6 +136,7 @@ export CFLAGS_BASE=\
 	-fPIC \
 	-fwasm-exceptions \
 	-sSUPPORT_LONGJMP=wasm \
+	-sWASMFS \
 	$(EXTRA_CFLAGS)
 
 
@@ -147,6 +148,11 @@ export LDFLAGS_BASE=\
 	-s WASM_BIGINT \
 	-fwasm-exceptions \
 	-sSUPPORT_LONGJMP=wasm \
+	-sWASMFS \
+	-sASSERTIONS \
+	-sEMIT_PRODUCERS_SECTION \
+	-sMINIFY_HTML=0 \
+	--minify=0 \
 	$(EXTRA_LDFLAGS) \
 
 export CXXFLAGS_BASE=
@@ -161,6 +167,7 @@ export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-s USE_ZLIB \
 	-s USE_BZIP2 \
 	-s FORCE_FILESYSTEM=1 \
+	-sWASMFS \
 	-s INITIAL_MEMORY=20971520 \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-s MAXIMUM_MEMORY=4GB \
@@ -179,10 +186,8 @@ export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-llzma \
 	-lsqlite3 \
 	-lstdc++ \
-	-lidbfs.js \
 	-lnodefs.js \
-	-lproxyfs.js \
-	-lworkerfs.js \
+	-lwasmfs.js \
 	-lwebsocket.js \
 	-leventloop.js \
 	-lhiwire \
@@ -281,6 +286,7 @@ ifeq ($(DISABLE_DYLINK), 1)
 		-s USE_ZLIB \
 		-s USE_BZIP2 \
 		-s FORCE_FILESYSTEM=1 \
+		-sWASMFS \
 		-s INITIAL_MEMORY=20971520 \
 		-s ALLOW_MEMORY_GROWTH=1 \
 		-s MAXIMUM_MEMORY=4GB \
@@ -295,9 +301,8 @@ ifeq ($(DISABLE_DYLINK), 1)
 		-lhiwire \
 		-llzma \
 		-lsqlite3 \
-		-lidbfs.js \
 		-lnodefs.js \
-    -lproxyfs.js
+		-lwasmfs.js
 
 endif
 

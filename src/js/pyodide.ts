@@ -10,7 +10,10 @@ import {
   calculateInstallBaseUrl,
 } from "./compat";
 
-import { createSettings } from "./emscripten-settings";
+import {
+  createSettings,
+  getFileSystemInitializationFuncs,
+} from "./emscripten-settings";
 import { version as version_ } from "./version";
 
 import type { PyodideAPI } from "./api.js";
@@ -376,6 +379,7 @@ async function prepareSnapshot(
 async function instantiatePyodideModule(
   createPyodideModule: CreatePyodideModuleFn,
   emscriptenSettings: EmscriptenSettings,
+  config: PyodideConfigWithDefaults,
 ): Promise<PyodideModule> {
   const module = await createPyodideModule(emscriptenSettings);
 
@@ -383,6 +387,15 @@ async function instantiatePyodideModule(
   if (emscriptenSettings.exitCode !== undefined) {
     throw new module.ExitStatus(emscriptenSettings.exitCode);
   }
+
+  // WasmFS is not usable during preRun, so we run all filesystem
+  // initialization after the runtime is ready, then call main() manually.
+  const fsInitFuncs = getFileSystemInitializationFuncs(config);
+  for (const func of fsInitFuncs) {
+    await func(module);
+  }
+  module._main();
+
   return module;
 }
 
@@ -499,6 +512,7 @@ export async function loadPyodide(
   const pyodideModule = await instantiatePyodideModule(
     createPyodideModuleFn,
     emscriptenSettings,
+    config,
   );
 
   // Stage 6: Configure API and validate versions

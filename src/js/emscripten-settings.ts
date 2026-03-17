@@ -49,7 +49,8 @@ export function createSettings(
     noImageDecoding: true,
     noAudioDecoding: true,
     noWasmDecoding: false,
-    preRun: getFileSystemInitializationFuncs(config),
+    noInitialRun: true,
+    preRun: [],
     print: config.stdout,
     printErr: config.stderr,
     onExit(code) {
@@ -172,7 +173,7 @@ function installStdlib(stdlibURL: string): PreRunFunc {
  * Initialize the virtual file system, before loading Python interpreter.
  * @private
  */
-function getFileSystemInitializationFuncs(
+export function getFileSystemInitializationFuncs(
   config: PyodideConfigWithDefaults,
 ): PreRunFunc[] {
   let stdLibURL;
