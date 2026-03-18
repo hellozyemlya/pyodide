@@ -457,21 +457,56 @@ EM_JS_NUM(errcode, JsvBuffer_assignFromPtr, (JsVal buf, void* ptr), {
 
 EM_JS_NUM(errcode, JsvBuffer_readFromFile, (JsVal buf, int fd), {
   let uint8_buf = bufferAsUint8Array(buf);
-  let stream = Module.FS.streams[fd];
-  Module.FS.read(stream, uint8_buf, 0, uint8_buf.byteLength);
+  let len = uint8_buf.byteLength;
+  let ptr = _malloc(len);
+  if (!ptr) return -1;
+  try {
+    let total = 0;
+    while (total < len) {
+      let n = _read(fd, ptr + total, len - total);
+      if (n <= 0) break;
+      total += n;
+    }
+    uint8_buf.set(Module.HEAPU8.subarray(ptr, ptr + total));
+  } finally {
+    _free(ptr);
+  }
 });
 
 EM_JS_NUM(errcode, JsvBuffer_writeToFile, (JsVal buf, int fd), {
   let uint8_buf = bufferAsUint8Array(buf);
-  let stream = Module.FS.streams[fd];
-  Module.FS.write(stream, uint8_buf, 0, uint8_buf.byteLength);
+  let len = uint8_buf.byteLength;
+  let ptr = _malloc(len);
+  if (!ptr) return -1;
+  try {
+    Module.HEAPU8.set(uint8_buf, ptr);
+    let total = 0;
+    while (total < len) {
+      let n = _write(fd, ptr + total, len - total);
+      if (n <= 0) return -1;
+      total += n;
+    }
+  } finally {
+    _free(ptr);
+  }
 });
 
 EM_JS_NUM(errcode, JsvBuffer_intoFile, (JsVal buf, int fd), {
   let uint8_buf = bufferAsUint8Array(buf);
-  let stream = Module.FS.streams[fd];
-  // set canOwn param to true, leave position undefined.
-  Module.FS.write(stream, uint8_buf, 0, uint8_buf.byteLength, undefined, true);
+  let len = uint8_buf.byteLength;
+  let ptr = _malloc(len);
+  if (!ptr) return -1;
+  try {
+    Module.HEAPU8.set(uint8_buf, ptr);
+    let total = 0;
+    while (total < len) {
+      let n = _write(fd, ptr + total, len - total);
+      if (n <= 0) return -1;
+      total += n;
+    }
+  } finally {
+    _free(ptr);
+  }
 });
 
 // ==================== Miscellaneous  ====================

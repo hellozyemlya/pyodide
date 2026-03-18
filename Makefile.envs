@@ -207,7 +207,10 @@ export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-sGL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0
 
 EXPORTS=_main \
+   ,_malloc \
    ,_free \
+   ,_read \
+   ,_write \
    \
    ,_hiwire_new \
    ,_hiwire_intern \
