@@ -535,16 +535,31 @@ export class PyodideAPI_ {
         `Expected argument 'fileSystemHandle' to be a FileSystemDirectoryHandle`,
       );
     }
-    const pathPtr = Module.stringToNewUTF8(path);
+    // Resolve the full path of fileSystemHandle relative to the OPFS root.
+    // FileSystemDirectoryHandle.resolve() returns the path components from
+    // the parent down to the handle, or null if not a descendant.
+    const opfsRoot = await navigator.storage.getDirectory();
+    const components = await opfsRoot.resolve(fileSystemHandle);
+    if (components === null) {
+      throw new Error(
+        `fileSystemHandle is not within the OPFS root. ` +
+          `Use a handle obtained from navigator.storage.getDirectory().`,
+      );
+    }
+    const opfsPath = "/" + components.join("/");
+    const mountPathPtr = Module.stringToNewUTF8(path);
+    const opfsPathPtr = Module.stringToNewUTF8(opfsPath);
     try {
-      const ret = await _pyodide_mount_opfs(pathPtr);
+      const ret = await Module.promisingMountOpfs(mountPathPtr, opfsPathPtr);
       if (ret !== 0) {
-        throw new Error(`Failed to mount OPFS at '${path}' (errno ${-ret})`);
+        throw new Error(
+          `Failed to mount OPFS '${opfsPath}' at '${path}' (errno ${-ret})`,
+        );
       }
     } finally {
-      _free(pathPtr);
+      _free(mountPathPtr);
+      _free(opfsPathPtr);
     }
-    // With WasmFS + JSPI, OPFS operations are synchronous — no sync step needed.
     return { syncfs: async () => {} };
   }
 

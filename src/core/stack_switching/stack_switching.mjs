@@ -8,6 +8,7 @@ import { initSuspenders } from "./suspenders.mjs";
 export {
   promisingApply,
   promisingRunMain,
+  promisingMountOpfs,
   createPromising,
   validSuspender,
   suspenderGlobal,

@@ -6,6 +6,12 @@
 #include <emscripten/wasmfs.h>
 #include <jslib.h>
 #include <stdbool.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define FAIL_IF_STATUS_EXCEPTION(status)                                       \
   if (PyStatus_Exception(status)) {                                            \
@@ -51,36 +57,118 @@ PyObject*
 PyInit__pyodide_core(void);
 
 /**
- * Set up WasmFS. OPFS requires JSPI and can only be safely created from a
- * worker thread, so it is not mounted here. It can be added later from a
- * dedicated worker if persistent storage is needed.
+ * Set up WasmFS.
  */
 EMSCRIPTEN_KEEPALIVE void
 setup_wasmfs(void)
 {
   // WasmFS already creates a memory-backed root with /dev during its init.
-  // Only add additional mount points here.
-  // backend_t opfs_backend = wasmfs_create_opfs_backend();
-  // if (opfs_backend) {
-  //   int ret = wasmfs_create_directory("/opfs", 0777, opfs_backend);
-  //   if (ret != 0) {
-  //     fprintf(stderr, "Warning: failed to mount OPFS backend at /opfs\n");
-  //   }
-  // }
 }
 
 /**
- * Mount an OPFS backend at a given path in WasmFS.
- * Requires JSPI. Returns 0 on success or a negative errno on failure.
+ * Create a directory and all missing parent directories (like `mkdir -p`).
+ * Ignores EEXIST at each level. Returns 0 on success, -errno on failure.
  */
-EMSCRIPTEN_KEEPALIVE int
-pyodide_mount_opfs(const char* path)
+static int
+mkdirp(const char* path)
 {
+  char tmp[PATH_MAX];
+  size_t len = strlen(path);
+  if (len == 0 || len >= PATH_MAX) {
+    return -ENAMETOOLONG;
+  }
+  memcpy(tmp, path, len + 1);
+  for (char* p = tmp + 1; *p; p++) {
+    if (*p == '/') {
+      *p = '\0';
+      if (mkdir(tmp, 0777) != 0 && errno != EEXIST) {
+        return -errno;
+      }
+      *p = '/';
+    }
+  }
+  if (mkdir(tmp, 0777) != 0 && errno != EEXIST) {
+    return -errno;
+  }
+  return 0;
+}
+
+static bool opfs_initialized = false;
+
+/**
+ * Lazily create the OPFS backend and mount it at /opfs (once).
+ * Subsequent calls are no-ops. Requires JSPI.
+ */
+static int
+ensure_opfs_mounted(void)
+{
+  if (opfs_initialized) {
+    return 0;
+  }
   backend_t backend = wasmfs_create_opfs_backend();
   if (!backend) {
-    return -1;
+    return -ENOMEM;
   }
-  return wasmfs_create_directory(path, 0777, backend);
+  int ret = wasmfs_create_directory("/opfs", 0777, backend);
+  if (ret != 0) {
+    return ret;
+  }
+  opfs_initialized = true;
+  return 0;
+}
+
+/**
+ * Mount an OPFS subdirectory at a VFS path via a symlink.
+ *
+ * On the first call, creates a single OPFS backend mounted at /opfs.
+ * Then creates /opfs<opfs_path> (with all parent dirs) and symlinks
+ * mount_path -> /opfs<opfs_path>.
+ *
+ * Example: pyodide_mount_opfs(s, "/data1", "/data1")
+ *   - mounts OPFS at /opfs (once)
+ *   - mkdir -p /opfs/data1
+ *   - symlink /data1 -> /opfs/data1
+ *
+ * Requires JSPI. Returns 0 on success, -errno on failure.
+ */
+EMSCRIPTEN_KEEPALIVE int
+pyodide_mount_opfs(JsVal suspender, const char* mount_path, const char* opfs_path)
+{
+  int ret = ensure_opfs_mounted();
+  if (ret != 0) {
+    return ret;
+  }
+
+  // Build the full OPFS path: /opfs<opfs_path>
+  char full_opfs_path[PATH_MAX];
+  int n = snprintf(full_opfs_path, sizeof(full_opfs_path), "/opfs%s", opfs_path);
+  if (n < 0 || n >= (int)sizeof(full_opfs_path)) {
+    return -ENAMETOOLONG;
+  }
+
+  // Create the OPFS subdirectory (and all parents under /opfs)
+  ret = mkdirp(full_opfs_path);
+  if (ret != 0) {
+    return ret;
+  }
+
+  // Create parent directories of mount_path (everything before the last /)
+  char parent[PATH_MAX];
+  memcpy(parent, mount_path, strlen(mount_path) + 1);
+  char* last_slash = strrchr(parent, '/');
+  if (last_slash && last_slash != parent) {
+    *last_slash = '\0';
+    ret = mkdirp(parent);
+    if (ret != 0) {
+      return ret;
+    }
+  }
+
+  // Create symlink: mount_path -> /opfs<opfs_path>
+  if (symlink(full_opfs_path, mount_path) != 0) {
+    return -errno;
+  }
+  return 0;
 }
 
 /**

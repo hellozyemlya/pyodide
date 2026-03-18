@@ -21,6 +21,13 @@ export function promisingRunMain(...args) {
   return promisingRunMainHandler(...args);
 }
 
+let promisingMountOpfsHandler;
+export function promisingMountOpfs(...args) {
+  validSuspender.value = true;
+  Module.stackStop = stackSave();
+  return promisingMountOpfsHandler(...args);
+}
+
 /**
  * This creates a wrapper around wasm_func that receives an extra suspender
  * argument and returns a promise. The suspender is stored into suspenderGlobal
@@ -71,5 +78,8 @@ export function initSuspenders() {
   promisingApplyHandler = createPromising(wasmExports._pyproxy_apply_promising);
   if (wasmExports.run_main_promising) {
     promisingRunMainHandler = createPromising(wasmExports.run_main_promising);
+  }
+  if (wasmExports.pyodide_mount_opfs) {
+    promisingMountOpfsHandler = createPromising(wasmExports.pyodide_mount_opfs);
   }
 }

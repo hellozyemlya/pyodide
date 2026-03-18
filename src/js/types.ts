@@ -75,7 +75,6 @@ declare global {
 declare global {
   // also: _JsString_FromId, _wrap_exception, _PyUnicode_Data, __js2python_none,
   // __js2python_true, __js2python_false, __js2python_pyproxy, _JsBuffer_CopyIntoMemoryView
-  export const _pyodide_mount_opfs: (path: number) => Promise<number>;
   export const _pyodide_mount_node_fs: (
     emscripten_path: number,
     host_path: number,
@@ -340,6 +339,7 @@ export interface PyodideModule extends PythonModule {
   _print_stderr: (ptr: number) => void;
   _setup_wasmfs: () => void;
   _main: () => void;
+  promisingMountOpfs: (mountPathPtr: number, opfsPathPtr: number) => Promise<number>;
   getPromise(p: number): Promise<any>;
 }
 
