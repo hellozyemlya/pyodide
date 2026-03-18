@@ -19,7 +19,6 @@ import {
   syncUpSnapshotLoad2,
 } from "./snapshot";
 import { unpackArchiveMetadata } from "./constants";
-import { syncLocalToRemote, syncRemoteToLocal } from "./nativefs";
 
 // Exported for micropip
 API.loadBinaryFile = loadBinaryFile;
@@ -85,22 +84,6 @@ if (typeof AbortSignal !== "undefined" && AbortSignal.any) {
 
 API.LiteralMap = LiteralMap;
 
-function ensureMountPathExists(path: string): void {
-  Module.FS.mkdirTree(path);
-  const { node } = Module.FS.lookupPath(path, {
-    follow_mount: false,
-  });
-
-  if (Module.FS.isMountpoint(node)) {
-    throw new Error(`path '${path}' is already a file system mount point`);
-  }
-  if (!Module.FS.isDir(node.mode)) {
-    throw new Error(`path '${path}' points to a file not a directory`);
-  }
-  for (const _ in node.contents) {
-    throw new Error(`directory '${path}' is not empty`);
-  }
-}
 
 /**
  * Why is this a class rather than an object?
@@ -546,29 +529,23 @@ export class PyodideAPI_ {
   static async mountNativeFS(
     path: string,
     fileSystemHandle: FileSystemDirectoryHandle,
-    // TODO: support sync file system
-    // sync: boolean = false
   ): Promise<NativeFS> {
     if (fileSystemHandle.constructor.name !== "FileSystemDirectoryHandle") {
       throw new TypeError(
         `Expected argument 'fileSystemHandle' to be a FileSystemDirectoryHandle`,
       );
     }
-    ensureMountPathExists(path);
-
-    Module.FS.mount(
-      Module.FS.filesystems.NATIVEFS_ASYNC,
-      { fileSystemHandle },
-      path,
-    );
-
-    // sync native ==> browser
-    await syncRemoteToLocal(Module);
-
-    return {
-      // sync browser ==> native
-      syncfs: async () => await syncLocalToRemote(Module),
-    };
+    const pathPtr = Module.stringToNewUTF8(path);
+    try {
+      const ret = await _pyodide_mount_opfs(pathPtr);
+      if (ret !== 0) {
+        throw new Error(`Failed to mount OPFS at '${path}' (errno ${-ret})`);
+      }
+    } finally {
+      _free(pathPtr);
+    }
+    // With WasmFS + JSPI, OPFS operations are synchronous — no sync step needed.
+    return { syncfs: async () => {} };
   }
 
   /**
@@ -583,7 +560,6 @@ export class PyodideAPI_ {
     if (!RUNTIME_ENV.IN_NODE) {
       throw new Error("mountNodeFS only works in Node");
     }
-    ensureMountPathExists(emscriptenPath);
     let stat;
     try {
       stat = nodeFSMod.lstatSync(hostPath);
@@ -593,12 +569,19 @@ export class PyodideAPI_ {
     if (!stat.isDirectory()) {
       throw new Error(`hostPath '${hostPath}' is not a directory`);
     }
-
-    Module.FS.mount(
-      Module.FS.filesystems.NODEFS,
-      { root: hostPath },
-      emscriptenPath,
-    );
+    const emscriptenPathPtr = Module.stringToNewUTF8(emscriptenPath);
+    const hostPathPtr = Module.stringToNewUTF8(hostPath);
+    try {
+      const ret = _pyodide_mount_node_fs(emscriptenPathPtr, hostPathPtr);
+      if (ret !== 0) {
+        throw new Error(
+          `Failed to mount '${hostPath}' at '${emscriptenPath}' (errno ${-ret})`,
+        );
+      }
+    } finally {
+      _free(emscriptenPathPtr);
+      _free(hostPathPtr);
+    }
   }
 
   /**

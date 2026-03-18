@@ -171,7 +171,7 @@ export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-s FORCE_FILESYSTEM=1 \
 	-sWASMFS \
 	-sJSPI \
-	-sJSPI_EXPORTS='main,_pyproxy_apply_promising,run_main_promising' \
+	-sJSPI_EXPORTS='main,_pyproxy_apply_promising,run_main_promising,_pyodide_mount_opfs' \
 	-s INITIAL_MEMORY=20971520 \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-s MAXIMUM_MEMORY=4GB \
@@ -263,6 +263,9 @@ EXPORTS=_main \
    ,_PyUnicode_New \
    ,_emscripten_stack_get_current \
    ,_Py_Version \
+   ,_pyodide_mount_opfs \
+   ,_pyodide_mount_node_fs \
+   ,_pyodide_unmount \
 
 
 ifeq ($(DISABLE_DYLINK), 1)

@@ -60,13 +60,50 @@ setup_wasmfs(void)
 {
   // WasmFS already creates a memory-backed root with /dev during its init.
   // Only add additional mount points here.
-  backend_t opfs_backend = wasmfs_create_opfs_backend();
-  if (opfs_backend) {
-    int ret = wasmfs_create_directory("/opfs", 0777, opfs_backend);
-    if (ret != 0) {
-      fprintf(stderr, "Warning: failed to mount OPFS backend at /opfs\n");
-    }
+  // backend_t opfs_backend = wasmfs_create_opfs_backend();
+  // if (opfs_backend) {
+  //   int ret = wasmfs_create_directory("/opfs", 0777, opfs_backend);
+  //   if (ret != 0) {
+  //     fprintf(stderr, "Warning: failed to mount OPFS backend at /opfs\n");
+  //   }
+  // }
+}
+
+/**
+ * Mount an OPFS backend at a given path in WasmFS.
+ * Requires JSPI. Returns 0 on success or a negative errno on failure.
+ */
+EMSCRIPTEN_KEEPALIVE int
+pyodide_mount_opfs(const char* path)
+{
+  backend_t backend = wasmfs_create_opfs_backend();
+  if (!backend) {
+    return -1;
   }
+  return wasmfs_create_directory(path, 0777, backend);
+}
+
+/**
+ * Mount a Node.js filesystem backend at emscripten_path backed by host_path.
+ * Returns 0 on success or a negative errno on failure.
+ */
+EMSCRIPTEN_KEEPALIVE int
+pyodide_mount_node_fs(const char* emscripten_path, const char* host_path)
+{
+  backend_t backend = wasmfs_create_node_backend(host_path);
+  if (!backend) {
+    return -1;
+  }
+  return wasmfs_create_directory(emscripten_path, 0777, backend);
+}
+
+/**
+ * Unmount a WasmFS mount point. Returns 0 on success or a negative errno.
+ */
+EMSCRIPTEN_KEEPALIVE int
+pyodide_unmount(const char* path)
+{
+  return wasmfs_unmount(path);
 }
 
 /**

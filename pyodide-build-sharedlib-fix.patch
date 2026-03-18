@@ -1,0 +1,51 @@
+diff --git a/pyodide_build/recipe/builder.py b/pyodide_build/recipe/builder.py
+index 23d7b32..924f93c 100755
+--- a/pyodide_build/recipe/builder.py
++++ b/pyodide_build/recipe/builder.py
+@@ -713,6 +713,13 @@ class RecipeBuilderSharedLibrary(RecipeBuilder):
+         self.dist_dir.mkdir(parents=True)
+         make_zip_archive(self.dist_dir / f"{self.fullname}.zip", self.src_dist_dir)
+ 
++        # also install .so files to library_install_prefix so that packages
++        # that depend on this shared library can link against them regardless
++        # of PYODIDE_RECIPE_BUILD_DIR
++        self.library_install_prefix.mkdir(parents=True, exist_ok=True)
++        for so_file in self.src_dist_dir.glob("*.so"):
++            shutil.copy2(so_file, self.library_install_prefix / so_file.name)
++
+ 
+ @cache
+ def _load_recipe(package_dir: Path) -> tuple[Path, MetaConfig]:
+diff --git a/pyodide_build/recipe/graph_builder.py b/pyodide_build/recipe/graph_builder.py
+index 1ee938a..017cfc0 100755
+--- a/pyodide_build/recipe/graph_builder.py
++++ b/pyodide_build/recipe/graph_builder.py
+@@ -7,6 +7,7 @@ import datetime
+ import shutil
+ import subprocess
+ import sys
++import zipfile
+ from collections import defaultdict
+ from collections.abc import Iterable, Iterator
+ from contextlib import contextmanager
+@@ -808,6 +809,20 @@ def build_from_graph(
+     # We won't rebuild the complement of the packages that we will build.
+     already_built = set(pkg_map.keys()).difference(needs_build)
+ 
++    # For already-built shared libraries, extract their .so files into
++    # library_install_prefix so dependent packages can link against them.
++    libs_dir = build_dir / ".libs"
++    for pkg_name in already_built:
++        pkg = pkg_map[pkg_name]
++        if pkg.package_type == "shared_library":
++            zip_path = pkg.pkgdir / "dist" / f"{pkg.name}-{pkg.version}.zip"
++            if zip_path.exists():
++                libs_dir.mkdir(parents=True, exist_ok=True)
++                with zipfile.ZipFile(zip_path) as zf:
++                    for member in zf.namelist():
++                        if member.endswith(".so"):
++                            zf.extract(member, libs_dir)
++
+     # Remove the packages we've already built from the dependency sets of
+     # the remaining ones
+     for pkg_name in needs_build:
