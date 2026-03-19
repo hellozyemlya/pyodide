@@ -339,7 +339,6 @@ export interface PyodideModule extends PythonModule {
   _print_stderr: (ptr: number) => void;
   _setup_wasmfs: () => void;
   _main: () => void;
-  promisingMountOpfs: (mountPathPtr: number, opfsPathPtr: number) => Promise<number>;
   getPromise(p: number): Promise<any>;
 }
 

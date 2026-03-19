@@ -57,15 +57,6 @@ PyObject*
 PyInit__pyodide_core(void);
 
 /**
- * Set up WasmFS.
- */
-EMSCRIPTEN_KEEPALIVE void
-setup_wasmfs(void)
-{
-  // WasmFS already creates a memory-backed root with /dev during its init.
-}
-
-/**
  * Create a directory and all missing parent directories (like `mkdir -p`).
  * Ignores EEXIST at each level. Returns 0 on success, -errno on failure.
  */
@@ -207,7 +198,6 @@ pyodide_unmount(const char* path)
 int
 main(int argc, char** argv)
 {
-  setup_wasmfs();
   // This exits and prints a message to stderr on failure,
   // no status code to check.
   PyImport_AppendInittab("_pyodide_core", PyInit__pyodide_core);

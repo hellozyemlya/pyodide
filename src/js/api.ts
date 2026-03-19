@@ -550,7 +550,7 @@ export class PyodideAPI_ {
     const mountPathPtr = Module.stringToNewUTF8(path);
     const opfsPathPtr = Module.stringToNewUTF8(opfsPath);
     try {
-      const ret = await Module.promisingMountOpfs(mountPathPtr, opfsPathPtr);
+      const ret = await (Module as any).promisingMountOpfs(mountPathPtr, opfsPathPtr);
       if (ret !== 0) {
         throw new Error(
           `Failed to mount OPFS '${opfsPath}' at '${path}' (errno ${-ret})`,
