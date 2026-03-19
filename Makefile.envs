@@ -151,7 +151,6 @@ export LDFLAGS_BASE=\
 	-sSUPPORT_LONGJMP=wasm \
 	-sWASMFS \
 	-sJSPI \
-	-sASSERTIONS \
 	-sEMIT_PRODUCERS_SECTION \
 	-sMINIFY_HTML=0 \
 	--minify=0 \

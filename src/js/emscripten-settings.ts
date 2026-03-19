@@ -84,6 +84,14 @@ export function createSettings(
  * @param path The path to the home directory.
  * @private
  */
+function createTmpDirectory(Module: PyodideModule) {
+  try {
+    Module.FS.mkdirTree("/tmp");
+  } catch (e) {
+    // ignore if it already exists
+  }
+}
+
 function createHomeDirectory(path: string): PreRunFunc {
   return function (Module) {
     const fallbackPath = "/";
@@ -185,6 +193,7 @@ export function getFileSystemInitializationFuncs(
 
   return [
     installStdlib(stdLibURL),
+    createTmpDirectory,
     createHomeDirectory(config.env.HOME),
     setEnvironment(config.env),
     initializeNativeFS,
