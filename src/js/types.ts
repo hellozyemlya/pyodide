@@ -81,6 +81,9 @@ declare global {
   ) => number;
   export const _pyodide_unmount: (path: number) => number;
 
+  export const _capture_stderr: () => void;
+  export const _restore_stderr: () => string;
+
   export const _check_gil: () => void;
   export const _dump_traceback: () => void;
   export const _pythonexc2js: () => void;

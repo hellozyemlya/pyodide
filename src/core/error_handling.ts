@@ -173,24 +173,12 @@ API.maybe_fatal_error = function (e: any) {
   API.fatal_error(e);
 };
 
-let stderr_chars: number[] = [];
 API.capture_stderr = function () {
-  // stderr_chars = [];
-  // Module.FS.createDevice("/dev", "capture_stderr", null, (e: number) =>
-  //   stderr_chars.push(e),
-  // );
-  // Module.FS.closeStream(2 /* stderr */);
-  // // open takes the lowest available file descriptor. Since 0 and 1 are occupied by stdin and stdout it takes 2.
-  // Module.FS.open("/dev/capture_stderr", 1 /* O_WRONLY */);
+  _capture_stderr();
 };
 
 API.restore_stderr = function () {
-  // Module.FS.closeStream(2 /* stderr */);
-  // Module.FS.unlink("/dev/capture_stderr");
-  // // open takes the lowest available file descriptor. Since 0 and 1 are occupied by stdin and stdout it takes 2.
-  // Module.FS.open("/dev/stderr", 1 /* O_WRONLY */);
-  // return UTF8ArrayToString(new Uint8Array(stderr_chars));
-  return "";
+  return _restore_stderr();
 };
 
 API.fatal_loading_error = function (...args: string[]) {

@@ -108,13 +108,53 @@ EM_JS(void, fail_test, (), {
   API.fail_test = true;
 })
 
-EM_JS(void, capture_stderr, (void), {
-  API.capture_stderr();
+// clang-format off
+EM_JS(JsVal, jsstring_from_utf8, (const char* ptr), {
+  return UTF8ToString(ptr);
 });
+// clang-format on
 
-EM_JS(JsVal, restore_stderr, (void), {
-  return API.restore_stderr();
-});
+static PyObject* saved_stderr = NULL;
+static PyObject* string_io = NULL;
+
+EMSCRIPTEN_KEEPALIVE void
+capture_stderr(void)
+{
+  PyObject* io_mod = PyImport_ImportModule("io");
+  if (!io_mod) {
+    return;
+  }
+  string_io = PyObject_CallMethod(io_mod, "StringIO", NULL);
+  Py_DECREF(io_mod);
+  if (!string_io) {
+    return;
+  }
+  saved_stderr = PySys_GetObject("stderr"); // borrowed ref
+  Py_XINCREF(saved_stderr);
+  PySys_SetObject("stderr", string_io);
+}
+
+EMSCRIPTEN_KEEPALIVE JsVal
+restore_stderr(void)
+{
+  JsVal result = Jsv_undefined;
+  if (string_io) {
+    PySys_SetObject("stderr", saved_stderr);
+    PyObject* contents = PyObject_CallMethod(string_io, "getvalue", NULL);
+    if (contents) {
+      const char* utf8 = PyUnicode_AsUTF8(contents);
+      if (utf8) {
+        result = jsstring_from_utf8(utf8);
+      }
+      Py_DECREF(contents);
+    }
+    Py_DECREF(string_io);
+    string_io = NULL;
+  }
+  Py_XDECREF(saved_stderr);
+  saved_stderr = NULL;
+  return result;
+}
 // clang-format on
 
 #ifdef DEBUG_F
